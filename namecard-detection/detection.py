@@ -2,6 +2,19 @@
 import numpy as np
 import cv2
 
+def order_points(pts):
+    rect = np.zeros((4, 2), dtype = 'float32')
+
+    s = pts.sum(axis = 1)
+    rect[0] = pts[np.argmin(s)]
+    rect[2] = pts[np.argmax(s)]
+
+    diff = np.diff(pts, axis = 1)
+    rect[1] = pts[np.argmin(diff)]
+    rect[3] = pts[np.argmax(diff)]
+
+    return rect
+
 def auto_scan_image_via_webcam():
     
     try:
@@ -57,9 +70,37 @@ def auto_scan_image_via_webcam():
             cv2.drawContours(frame, [screenCnt], -1, (0, 255, 0), 2)
             cv2.imshow("WebCam", frame)
 
+            rect = order_points(screenCnt.reshape(4, 2))
+            (topLeft, topRight, bottomRight, bottomLeft) = rect
+
+            w1 = abs(bottomRight[0] - bottomLeft[0])
+            w2 = abs(topRight[0] - topLeft[0])
+            h1 = abs(topRight[1] - bottomRight[1])
+            h2 = abs(topLeft[1] - bottomLeft[1])
+            maxWidth = max(w1, w2)
+            maxHeight = max(h1, h2)
+
+            dst = np.float32([[0, 0], [maxWidth - 1, 0], [maxWidth - 1, maxHeight - 1], [0, maxHeight - 1]])
+
+            N = cv2.getPerspectiveTransform(rect, dst)
+            warped = cv2.warpPerspective(frame, N, (maxWidth, maxHeight))
+
+            print("Apply Perspective Transform")
+
+            warped = cv2.cvtColor(warped, cv2.COLOR_BGR2GRAY)
+            warped = cv2.adaptiveThreshold(warped, 256, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 21, 10)
+
+            print("Apply Adaptive Threshold")
+
+            break
+
     cam.release()
     cv2.destroyAllWindows()
     cv2.waitKey(1)
+
+    cv2.imshow("Scanned", warped)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
 
 if __name__ == '__main__':
     auto_scan_image_via_webcam()
