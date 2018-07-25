@@ -99,6 +99,7 @@ def auto_scan_image_via_webcam():
     cv2.waitKey(1)
 
     cv2.imshow("Scanned", warped)
+    cv2.imwrite('temp.png', warped)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
